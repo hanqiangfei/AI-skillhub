@@ -13,6 +13,7 @@ This skill already covers the requested pull/push workflow: `pull` is the packag
 
 - `SKILLHUB_URL`: base URL, default `https://skill.local.asstar.net`
 - `SKILLHUB_TOKEN_PATH`: vault path for the long-lived token, default `secret/skillhub/publish`
+- `SKILLHUB_TOKEN`: direct token value, used when Vault is unavailable or not configured
 - `SKILLHUB_NAMESPACE`: target namespace for publish/fetch operations
 - `SKILLHUB_SLUG`: skill slug for show/fetch operations
 - `SKILL_ZIP`: path to the skill package zip for publish
@@ -23,9 +24,10 @@ This skill already covers the requested pull/push workflow: `pull` is the packag
 ## Token Handling Flow
 
 1. Obtain the long-lived SkillHub token from the local SkillHub service.
-2. Store the token in the local vault service.
-3. Read the token back from vault at runtime.
-4. Use it in the `Authorization: Bearer` header for SkillHub API calls.
+2. Preferred path: store the token in Vault and set `SKILLHUB_TOKEN_PATH`.
+3. Portable fallback: set `SKILLHUB_TOKEN` directly on machines without Vault.
+4. At runtime, the wrapper tries Vault first, then falls back to `SKILLHUB_TOKEN`.
+5. Use the resolved token in the `Authorization: Bearer` header for SkillHub API calls.
 
 ## Supported Operations
 
@@ -108,7 +110,8 @@ curl -fsS -X POST "${SKILLHUB_URL}/api/v1/skills" \
 
 - Do not hardcode the token in the skill text, scripts, or logs.
 - Do not print the token in chat output, logs, or artifacts.
-- Read the token from vault at runtime every time.
+- Prefer reading the token from Vault at runtime.
+- On machines without Vault, provide `SKILLHUB_TOKEN` through a local shell, secret manager, or CI secret variable.
 
 ## Minimal Wrapper
 
@@ -128,7 +131,12 @@ case "${COMMAND}" in
     ;;
 esac
 
-TOKEN="$(vault read -field=token "${SKILLHUB_TOKEN_PATH}")"
+if command -v vault &>/dev/null && vault read -field=token "${SKILLHUB_TOKEN_PATH}" &>/dev/null 2>&1; then
+  TOKEN="$(vault read -field=token "${SKILLHUB_TOKEN_PATH}")"
+else
+  : "${SKILLHUB_TOKEN:?set SKILLHUB_TOKEN env var, or install vault and configure SKILLHUB_TOKEN_PATH}"
+  TOKEN="${SKILLHUB_TOKEN}"
+fi
 
 case "${COMMAND}" in
   list)

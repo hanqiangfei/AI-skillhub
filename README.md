@@ -10,7 +10,7 @@ This repository packages the `han-skillhub` skill at the repository root so agen
 - Shows metadata for one skill.
 - Pulls a skill package zip from SkillHub.
 - Pushes a prepared skill package zip to SkillHub.
-- Reads the SkillHub token from Vault at runtime instead of storing credentials in the repository.
+- Reads the SkillHub token from Vault at runtime, or from `SKILLHUB_TOKEN` on machines without Vault.
 
 ## Repository Layout
 
@@ -25,12 +25,23 @@ This repository packages the `han-skillhub` skill at the repository root so agen
 
 ## Configuration
 
-Set the registry, Vault token path, and operation-specific variables before running the helper script.
+Set the registry and authentication variables before running the helper script.
+
+Vault-backed authentication, preferred on machines that have Vault configured:
 
 ```bash
 export SKILLHUB_URL="https://skill.local.asstar.net"
 export SKILLHUB_TOKEN_PATH="secret/skillhub/publish"
 ```
+
+Portable authentication, useful on machines without Vault:
+
+```bash
+export SKILLHUB_URL="https://skill.local.asstar.net"
+export SKILLHUB_TOKEN="<skillhub-token>"
+```
+
+The helper tries Vault first. If `vault` is unavailable or the configured path cannot be read, it falls back to `SKILLHUB_TOKEN`.
 
 Common variables:
 
@@ -38,6 +49,7 @@ Common variables:
 - `SKILLHUB_SLUG`: skill slug used for show and pull operations.
 - `SKILL_FETCH_OUT`: output zip path for pull operations.
 - `SKILL_ZIP`: package zip path for push operations.
+- `SKILLHUB_TOKEN`: direct token value used when Vault is unavailable.
 - `SKILL_VISIBILITY`: push visibility, defaults to `PRIVATE`.
 - `SKILLHUB_CONFIRM_WARNINGS`: publish warning confirmation, defaults to `true`.
 
@@ -81,7 +93,8 @@ Legacy aliases are also supported:
 ## Security Notes
 
 - Do not commit SkillHub tokens, Vault tokens, or generated package credentials.
-- The helper reads the SkillHub token with `vault read -field=token "$SKILLHUB_TOKEN_PATH"`.
+- The helper reads the SkillHub token with `vault read -field=token "$SKILLHUB_TOKEN_PATH"` when Vault is available.
+- On machines without Vault, set `SKILLHUB_TOKEN` through your shell, local secret manager, or CI secret variable.
 - Avoid printing token values in terminal logs, chat output, or CI artifacts.
 
 ## Skill Definition

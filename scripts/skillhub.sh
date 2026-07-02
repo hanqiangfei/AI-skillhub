@@ -13,7 +13,12 @@ case "${COMMAND}" in
     ;;
 esac
 
-TOKEN="$(vault read -field=token "${SKILLHUB_TOKEN_PATH}")"
+if command -v vault &>/dev/null && vault read -field=token "${SKILLHUB_TOKEN_PATH}" &>/dev/null 2>&1; then
+  TOKEN="$(vault read -field=token "${SKILLHUB_TOKEN_PATH}")"
+else
+  : "${SKILLHUB_TOKEN:?set SKILLHUB_TOKEN env var, or install vault and configure SKILLHUB_TOKEN_PATH}"
+  TOKEN="${SKILLHUB_TOKEN}"
+fi
 
 case "${COMMAND}" in
   list)
